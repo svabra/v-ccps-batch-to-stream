@@ -1,0 +1,9 @@
+.gitignore
+README.MD
+*/*/to-uninstall.txt
+logs/*
+*/*.log
+secrets/*
+secrets.yml
+archive
+storage
