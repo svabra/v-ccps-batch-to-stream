@@ -21,7 +21,7 @@ COPY ./src /app/src
 WORKDIR /app
 
 #CAUTION, the --reset flag will automatically read again from the beginning for this consumer group. Remove it for production.
-CMD ["python", "src/main.py", "storage/config.ini"]
-#CMD ["python", "src/main.py", "storage/config.ini", "--reset"]
+#CMD ["python", "src/main.py", "storage/config.ini"]
+CMD ["python", "src/main.py", "storage/config.ini", "--reset"]
 
 

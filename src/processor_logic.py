@@ -34,18 +34,16 @@ class ProcessorLogic:
                     # Unpack the batch of the array and submit them one by one to the producer topic   
                     messages = json.loads(msg.value().decode('utf-8'))                    
                     for event in messages[self.name_of_array_field]:
-                        self.produce_event(event)                    
+                        try:
+                            self.producer.send(value=event)
+                        except Exception as ex:
+                            ex_msg = f"Failed to produce event. {ex}. Event: {event}. Shutting down the application to avoid data loss."
+                            raise Exception(ex_msg)                 
         except KeyboardInterrupt:
             pass
+        except Exception as ex:
+            logger.error(ex)
         finally:
             logger.info("Shutting down the consumer, leaving the consumer-group and comitting the final offset.")
             self.consumer.close()
-
-    def produce_event(self, event: dict):
-        logger.info(event)
-        try:
-            #@Julian, depending on the key you want, you need to set it here. e.g. AHV-Nr.
-            self.producer.send(key="any_key", value=str(event))
-        except Exception as ex:
-            logger.error(f"Failed to produce event. {ex}. {event}. Shutting down the application to avoid data loss.")
-            sys.exit()
+       
