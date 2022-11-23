@@ -56,11 +56,13 @@ class Producer:
 
     def get_key_path(self) -> str:
         """Return the path of the key in the source events, which should be copied to the sink events."""
+        key_path = None
         try:            
-            return self.get_extras_configs()["key_path_in_source_topic"]
+            key_path =  self.get_extras_configs()["key_path_in_source_topic"]
         except KeyError:
             logger.debug(f"There is no key_path_in_source_topic in the config, thus we assume no key provided programmaticaly.")
-            return None   
+        finally:
+            return key_path
 
     # Optional per-message delivery callback (triggered by poll() or flush())
     # when a message has been successfully delivered or permanently
@@ -71,7 +73,7 @@ class Producer:
             logger.error('ERROR: Message failed delivery: {}. The processor is shutting down. '.format(err))
             sys.exit()
         else:
-            logger.debug(f"Produced event to topic {msg.topic} with key {msg.key().decode('utf-8')} with value {msg.value().decode('utf-8')}")
+            logger.debug(f"Produced event to topic {msg.topic()} with key {msg.key().decode('utf-8')} and with value {msg.value().decode('utf-8')}")
 
     def send(self, value:dict, key:str=None):
         """ Send a new event to the sink topic. 
@@ -81,12 +83,15 @@ class Producer:
         if key is None:
             # Read the config.ini
             key_path = self.get_key_path()
-            json_path_expr = parse(key_path)
-            try:
-                key = [match.value for match in json_path_expr.find(value)][0]
-            except Exception as ex:
-                logger.info(f"No key matched the parse expression ({json_path_expr}). Thus the key ({key}) is not modified.")
-            logger.debug(f"The key is set to {key}.")
+            if key_path is None:
+                logger.debug("The key path is None.")
+            else:
+                json_path_expr = parse(key_path)
+                try:
+                    key = [match.value for match in json_path_expr.find(value)][0]
+                except Exception as ex:
+                    logger.info(f"No key matched the parse expression ({json_path_expr}). Thus the key ({key}) is not modified.")
+                logger.debug(f"The key is set to {key}.")
 
         # TODO @Julian, Hier muss du noch die SchemaRegistry eintragen --> config.ini
         # Siehe Beispiel: https://github.com/confluentinc/confluent-kafka-python/blob/master/examples/avro_producer.py
@@ -97,14 +102,14 @@ class Producer:
         # schema_registry_conf = {'url': args.schema_registry}
         # schema_registry_client = SchemaRegistryClient(schema_registry_conf)
         # avro_serializer = AvroSerializer(schema_registry_client, schema_str, user_to_dict)
-
-
         new_event = json.dumps(value)
         logger.debug(f"Event production: {value} with key {key}")
         try: 
-            self.producer.produce(self.topic, new_event.encode('utf-8'), key.encode('utf-8'), callback=self.delivery_callback)
+            if key is None:
+                key = ""
+            self.producer.produce(self.topic, key=key.encode('utf-8'), value=new_event.encode('utf-8'), callback=self.delivery_callback)
         except Exception as ex:
-            logger.error(f"Failed to product an event to self.topic for the value {value} und key {key}. The error is: {ex}")
+            logger.error(f"Failed to produce an event to {self.topic} for the value {value} und key {key}. The error is: {ex}")
         #self.producer.produce(self.topic, avro_serializer(user, SerializationContext(self.topic, MessageField.VALUE)), key.encode('utf-8'), callback=self.delivery_callback)
         self.producer.poll(0)
         self.producer.flush()
