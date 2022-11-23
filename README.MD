@@ -1,16 +1,22 @@
-# BATCH TO STREAM processor (message splitter pattern)
+# BATCH TO STREAM processor (message splitter or sequencer pattern)
 
 ## Purpose
 This service picks up records one by one from a specific topic. Then reads the value field in which a series of events (json array of events) are stored (batch). These events are then inserted into a topic, which is also configured in the config.
 
-## Config
-The following configurations should be provided in a yaml file called `config.yaml` of the root directory.
+This event processor implements the splitter pattern. https://www.enterpriseintegrationpatterns.com/patterns/messaging/Sequencer.html
 
-`bootstrap_url`
-`consumer_group_name`
-`source_topic`
-`source_topic_field`
-`destination_topic`
+Because this processor is configurable, it can be reused for any message splitting task.
+
+IMPORTANT: Be careful on how to run the docker image. See the last line in the Dockerfile. Using the `--reset` flag, will force the processor to read from the earliest records every time the processor start. That is dangerous and could produce duplicate entries in the sink topic.
+
+## Config
+This pattern implementation requires certain configuration. e.g. source and sink topic, a key from the value to use. (e.g. a path in the json value), etc.
+
+There is a sample configuration in the /examples/storage/config.ini folder.
+Place the final config into the /storage folder.
+- Define the source and the sink topic. 
+- Define in what field or the source event we can find the batch messages.
+- Define the key path to parse the key for the new event. This path is relative to the single event.
 
 ### Dev-Env
 
@@ -31,7 +37,7 @@ or `pip3 install pip-autoremove`
 To benefit of code-insight/completion select the venv Interpreter (Ctr) --> (Ctrl+Shift+P) then search for "Python: Select Interpreter"
 
 ## Running the environment 
-Run the stream processor from the offset: `python src/main.py storage/config.ini`
+Run the stream processor from the offset: `python src/main.py storage/config~.ini`
 Run the stream processor from the beginning: `python src/main.py storage/config.ini --reset`
 
 ## Unit Tests
