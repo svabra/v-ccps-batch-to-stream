@@ -47,7 +47,7 @@ class ConsumerFactory:
         try:            
             return self.get_extras_configs()["name_of_array_field"]
         except KeyError:
-            logger.error(f"You must provide a the field containing the array in the config file. Stoping application.")
+            logger.error(f"You must provide a the field containing the array in the config file. Stopping the application.")
             sys.exit()
 
     def get_subscribed_consumer(self) -> Consumer:
@@ -55,8 +55,12 @@ class ConsumerFactory:
         # Set up a callback to handle the '--reset' flag.
         consumer = Consumer(self.get_kafka_connection_config())        
         # Subscribe to topic        
-        consumer.subscribe([self.get_topic()], on_assign=self.reset_offset)
-        return consumer
+        try: 
+            consumer.subscribe([self.get_topic()], on_assign=self.reset_offset)
+            return consumer
+        except Exception as ex:
+            logger.error(f"Failed to subscribe to consumer topic. {ex}. Stopping the application.")
+            sys.exit()
 
     # Set up a callback to handle the '--reset' flag.
     def reset_offset(self, consumer, partitions):
